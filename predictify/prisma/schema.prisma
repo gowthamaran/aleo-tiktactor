@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id              String   @id @default(cuid())
+  username        String   @unique
+  displayName     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  balance         Int      @default(10000) // fake coins
+  bets            Bet[]
+  streakCurrent   Int      @default(0)
+  streakBest      Int      @default(0)
+  wins            Int      @default(0)
+  losses          Int      @default(0)
+  profit          Int      @default(0)
+  // rolling accuracy fields can be computed, but cache for speed
+  predictionsMade Int      @default(0)
+  predictionsCorrect Int   @default(0)
+}
+
+model Market {
+  id            String     @id @default(cuid())
+  title         String
+  category      String
+  description   String
+  createdAt     DateTime   @default(now())
+  closeAt       DateTime
+  resolvedAt    DateTime?
+  resolvedOutcome Outcome?
+  status        MarketStatus @default(OPEN)
+  // probabilities 0..100 basis points percentage*100? we'll store 0..10000 bps
+  probYesBps    Int        @default(5000)
+  probNoBps     Int        @default(5000)
+  totalYesStake Int        @default(0)
+  totalNoStake  Int        @default(0)
+  bets          Bet[]
+}
+
+model Bet {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  market     Market   @relation(fields: [marketId], references: [id])
+  marketId   String
+  outcome    Outcome
+  amount     Int      // in coins
+  // snapshot of implied probabilities at bet time (basis points)
+  probYesBpsAtBet Int
+  probNoBpsAtBet  Int
+  createdAt  DateTime @default(now())
+  // settlement
+  settled    Boolean  @default(false)
+  payout     Int?     // positive if win, 0 if loss
+}
+
+enum Outcome {
+  YES
+  NO
+}
+
+enum MarketStatus {
+  OPEN
+  CLOSED
+  RESOLVED
+}
