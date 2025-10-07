@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Outcome {
+  YES
+  NO
+}
+
+model User {
+  id           String      @id @default(cuid())
+  username     String      @unique
+  createdAt    DateTime    @default(now())
+  balance      Int         @default(100000) // starting fake coins
+  streakCurrent Int        @default(0)
+  streakBest    Int        @default(0)
+
+  bets         Bet[]
+  badges       UserBadge[]
+}
+
+model Category {
+  id      Int      @id @default(autoincrement())
+  slug    String   @unique
+  name    String
+  markets Market[]
+}
+
+model Market {
+  id                String     @id @default(cuid())
+  title             String     @unique
+  description       String?
+  categoryId        Int?
+  category          Category?  @relation(fields: [categoryId], references: [id])
+  createdAt         DateTime   @default(now())
+  currentProbability Float      @default(0.5) // implied prob for YES
+  resolvesAt        DateTime?
+  resolvedAt        DateTime?
+  resolvedOutcome   Outcome?
+  active            Boolean    @default(true)
+
+  bets              Bet[]
+
+  @@index([categoryId])
+}
+
+model Bet {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  marketId   String
+  market     Market   @relation(fields: [marketId], references: [id])
+  outcome    Outcome
+  confidence Float?   // user's stated probability belief for YES (0..1)
+  amount     Int      // staked coins
+  createdAt  DateTime @default(now())
+  settled    Boolean  @default(false)
+  profit     Int?
+  won        Boolean?
+
+  @@index([userId])
+  @@index([marketId])
+}
+
+model Badge {
+  id          Int         @id @default(autoincrement())
+  slug        String      @unique
+  name        String
+  description String
+  users       UserBadge[]
+}
+
+model UserBadge {
+  userId   String
+  badgeId  Int
+  awardedAt DateTime @default(now())
+  user     User   @relation(fields: [userId], references: [id])
+  badge    Badge  @relation(fields: [badgeId], references: [id])
+
+  @@id([userId, badgeId])
+}
